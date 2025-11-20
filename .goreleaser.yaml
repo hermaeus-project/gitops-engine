@@ -122,4 +122,4 @@ changelog:
   filters:
     exclude:
       - '^test:'
-      - '^bump\-version:'
+      - '^.*?Bump(\([[:word:]]+\))?.+$'
