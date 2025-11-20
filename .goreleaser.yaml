@@ -1,0 +1,125 @@
+# Based on https://github.com/robinlioret/gitops-promoter/blob/main/.goreleaser.yaml
+project_name: gitops-engine
+version: 2
+
+dist: release_dist
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+    - make manifests
+    - make generate
+    - make build-installer IMG=ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}
+
+builds:
+  - id: gitops-engine
+    main: ./cmd
+    binary: gitops-engine
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -v
+    goos:
+      - linux
+      - darwin
+    ldflags:
+      - -X github.com/hermaeus-project/gitops-engine/common.version={{ .Version }}
+      - -X github.com/hermaeus-project/gitops-engine/common.buildDate={{ .Date }}
+      - -extldflags="-static"
+
+dockers:
+  - image_templates:
+      - ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}-amd64
+    dockerfile: Dockerfile
+    skip_push: "{{ .IsSnapshot }}"
+    use: buildx
+    goarch: amd64
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
+      -
+  - image_templates:
+      - ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}-arm64
+    dockerfile: Dockerfile
+    skip_push: "{{ .IsSnapshot }}"
+    use: buildx
+    goarch: arm64
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ghrc.io/hermaeus-project/gitops-engine{{ .Tag }}"
+    image_templates:
+      - "ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}-amd64"
+      - "ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}-arm64"
+
+archives:
+  - id: binary
+    formats:
+      - tar.gz
+    builds:
+      - "gitops-engine"
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+release:
+  prerelease: auto
+  draft: true
+  extra_files:
+    - glob: ./install.yaml
+
+  header: |
+    ## gitops-engine
+    {{ .Date }}
+
+    ### Container images
+
+    - ghrc.io/hermaeus-project/gitops-engine:{{ .Tag }}
+
+  footer: |
+    **Full Changelog**: https://github.com/hermaeus-project/gitops-engine/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+changelog:
+  use:
+    github
+  sort: asc
+  abbrev: 0
+  groups: # Regex use RE2 syntax as defined here: https://github.com/google/re2/wiki/Syntax.
+    - title: 'Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 100
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 200
+    - title: 'Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 300
+    - title: 'Dependency updates'
+      regexp: '^.*?(feat|fix|chore)\(deps?.+\)!?:.+$'
+      order: 400
+    - title: 'Other work'
+      order: 999
+
+  filters:
+    exclude:
+      - '^test:'
+      - '^bump\-version:'

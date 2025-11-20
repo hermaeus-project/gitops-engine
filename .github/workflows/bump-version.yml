@@ -36,8 +36,8 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
-          commit-message: "docs: bump manifest versions to v${{ github.event.inputs.new_version }}"
-          title: "docs: bump manifest versions to v${{ github.event.inputs.new_version }}"
-          body: "Automated PR to bump manifest versions in documentation."
-          branch: "bump-docs-manifests/v${{ github.event.inputs.new_version }}"
+          commit-message: "bump-version: to v${{ github.event.inputs.new_version }}"
+          title: "bump-version: to v${{ github.event.inputs.new_version }}"
+          body: "Automated PR to bump versions."
+          branch: "bump-version/v${{ github.event.inputs.new_version }}"
           delete-branch: true
